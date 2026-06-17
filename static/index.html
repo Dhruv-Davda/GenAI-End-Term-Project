@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Insight Engine — Autonomous Data Analysis Agent</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="aurora">
+    <span class="blob b1"></span>
+    <span class="blob b2"></span>
+    <span class="blob b3"></span>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">◆</div>
+      <div class="brand-text">
+        <h1>Insight&nbsp;Engine</h1>
+        <p>Autonomous Data Analysis Agent</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="model-badge" id="model-badge">
+        <span class="pulse-dot"></span> <span id="model-name">connecting…</span>
+      </span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside class="sidebar">
+      <div class="panel" id="upload-card">
+        <div class="dropzone" id="dropzone">
+          <div class="dz-icon">⬡</div>
+          <p class="dz-title">Drop your data here</p>
+          <p class="dz-sub">CSV · Excel · JSON · SQLite</p>
+          <input type="file" id="file-input" accept=".csv,.tsv,.txt,.xlsx,.xls,.json,.db,.sqlite,.sqlite3" hidden />
+        </div>
+        <div class="upload-actions">
+          <button class="btn ghost" id="browse-btn">Browse files</button>
+          <button class="btn glow" id="sample-btn">✦ Try sample data</button>
+        </div>
+        <p class="key-warning" id="key-warning" hidden>
+          ⚠ No API key detected — uploads &amp; profiling work, but asking questions needs <code>ANTHROPIC_API_KEY</code>.
+        </p>
+      </div>
+
+      <div class="panel dataset-panel" id="dataset-panel" hidden>
+        <div class="ds-head">
+          <div>
+            <h2 id="ds-name">dataset</h2>
+            <p class="ds-note" id="ds-note"></p>
+          </div>
+          <span class="chip kind" id="ds-kind">CSV</span>
+        </div>
+
+        <div class="stat-grid" id="stat-grid"></div>
+
+        <div class="type-chips" id="type-chips"></div>
+
+        <div class="section-label">Schema &amp; quality</div>
+        <div class="col-table-wrap">
+          <table class="col-table" id="col-table"></table>
+        </div>
+
+        <div id="anomaly-box" hidden>
+          <div class="section-label warn">⚠ Anomalies detected</div>
+          <ul class="anomaly-list" id="anomaly-list"></ul>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===================== WORKSPACE ===================== -->
+    <section class="workspace">
+      <div class="feed" id="feed">
+        <div class="empty-state" id="empty-state">
+          <div class="es-glyph">❋</div>
+          <h2>Ask anything about your data</h2>
+          <p>Drop in a dataset, ask a business question in plain English, and watch the
+             agent write code, run it, fix its own errors, chart the answer, and explain
+             what it means — with the limitations stated honestly.</p>
+          <div class="es-steps">
+            <span>① Profile</span><i>→</i><span>② Plan</span><i>→</i><span>③ Code</span>
+            <i>→</i><span>④ Execute</span><i>→</i><span>⑤ Visualize</span><i>→</i><span>⑥ Explain</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="composer" id="composer">
+        <div class="example-chips" id="example-chips"></div>
+        <div class="composer-bar">
+          <textarea id="question" rows="1" placeholder="Upload a dataset to begin…" disabled></textarea>
+          <button class="send-btn" id="send-btn" disabled title="Ask">
+            <span class="send-arrow">↑</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast-wrap" id="toast-wrap"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
