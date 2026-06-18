@@ -6,6 +6,7 @@ access. Execution happens on a worker thread with a hard timeout. This is a
 defence-in-depth measure for a local, single-user tool, not a hardened
 multi-tenant sandbox.
 """
+import ast
 import builtins as _builtins
 import contextlib
 import io
@@ -62,6 +63,50 @@ _SAFE_BUILTINS["__import__"] = _safe_import
 _SAFE_BUILTINS["__build_class__"] = _builtins.__build_class__
 
 
+class SandboxError(Exception):
+    """Raised when generated code uses a disallowed construct."""
+
+
+# File / network / system I/O method names that the analysis never legitimately
+# needs (it operates on the provided `df`/`tables`). Blocking them statically
+# closes file-read and pickle-RCE vectors that the allowed libraries otherwise
+# expose. Benign methods (to_dict, to_numpy, to_string, to_datetime, …) are NOT
+# listed, so normal analysis is unaffected.
+_DENY_ATTRS = {
+    # pandas readers (file / network)
+    "read_csv", "read_table", "read_fwf", "read_excel", "read_json", "read_html",
+    "read_xml", "read_parquet", "read_feather", "read_orc", "read_hdf", "read_stata",
+    "read_sas", "read_spss", "read_pickle", "read_sql", "read_sql_query",
+    "read_sql_table", "read_gbq", "read_clipboard",
+    # pandas writers (file / network)
+    "to_csv", "to_excel", "to_json", "to_parquet", "to_feather", "to_orc", "to_hdf",
+    "to_stata", "to_sql", "to_gbq", "to_pickle", "to_clipboard",
+    # numpy file I/O
+    "load", "loadtxt", "genfromtxt", "fromfile", "tofile", "memmap", "savetxt",
+    # plotly file writers
+    "write_image", "write_html", "write_json",
+    # process / system
+    "system", "popen", "getoutput", "getstatusoutput", "check_output", "check_call",
+    "Popen", "spawn", "spawnl", "spawnv",
+}
+_DENY_NAMES = {"open", "eval", "exec", "compile", "input", "__import__", "breakpoint", "exit", "quit"}
+
+
+def _static_check(code):
+    """Reject obviously dangerous constructs before execution. Raises SyntaxError
+    (bad code) or SandboxError (disallowed construct)."""
+    tree = ast.parse(code)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute):
+            attr = node.attr
+            if attr.startswith("__") and attr.endswith("__"):
+                raise SandboxError(f"access to dunder attribute '{attr}' is not allowed")
+            if attr in _DENY_ATTRS:
+                raise SandboxError(f"'{attr}' (file/network/system I/O) is not allowed in the sandbox")
+        elif isinstance(node, ast.Name) and node.id in _DENY_NAMES:
+            raise SandboxError(f"use of '{node.id}' is not allowed in the sandbox")
+
+
 def _clean_traceback(tb: str) -> str:
     """Drop sandbox internals, keeping frames from the analysis code."""
     lines = tb.splitlines()
@@ -75,9 +120,13 @@ def execute(code, df, tables=None):
 
     def target():
         try:
+            _static_check(code)
             compiled = compile(code, "<analysis>", "exec")
         except SyntaxError:
             result["error"] = _clean_traceback(traceback.format_exc())
+            return
+        except SandboxError as e:
+            result["error"] = f"SandboxError: {e}"
             return
 
         buf = io.StringIO()

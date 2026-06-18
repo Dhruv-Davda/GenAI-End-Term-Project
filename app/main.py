@@ -35,7 +35,10 @@ def health():
 
 
 def _make_session(df, tables, name, kind, note, main_key):
-    prof = profiler.profile(df, tables, main_key)
+    try:
+        prof = profiler.profile(df, tables, main_key)
+    except Exception as e:  # noqa: BLE001 — never 500 on a quirky dataset
+        raise HTTPException(400, f"Could not profile this dataset: {e}")
     sid = create_session(df, tables, prof, name, main_key)
     return {
         "session_id": sid,

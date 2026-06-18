@@ -66,6 +66,25 @@ def _semantic(name, s):
     return "categorical"
 
 
+def _stringify_unhashable(df):
+    """Nested JSON can yield columns of lists/dicts; nunique/value_counts raise
+    TypeError on those. Stringify only those columns (on a copy) so profiling is
+    robust. The original df (used by the agent) is untouched."""
+    out = None
+    for col in df.columns:
+        try:
+            s = df[col]
+            if getattr(s, "dtype", None) == object and s.map(
+                lambda v: isinstance(v, (list, dict, set))
+            ).any():
+                if out is None:
+                    out = df.copy()
+                out[col] = out[col].astype(str)
+        except Exception:
+            continue
+    return out if out is not None else df
+
+
 def _column(name, s, n_rows):
     nulls = int(s.isna().sum())
     null_pct = round(100 * nulls / n_rows, 1) if n_rows else 0.0
@@ -124,6 +143,7 @@ def _column(name, s, n_rows):
 
 
 def profile(df, tables=None, main_key=None):
+    df = _stringify_unhashable(df)
     n_rows = int(len(df))
     n_cols = int(df.shape[1])
 
